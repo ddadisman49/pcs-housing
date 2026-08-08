@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/home/home_screen.dart';
+import 'navigation/main_navigation.dart';
 
 class PCSHousingApp extends StatelessWidget {
   const PCSHousingApp({super.key});
@@ -15,7 +15,7 @@ class PCSHousingApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const MainNavigation(),
     );
   }
 }
