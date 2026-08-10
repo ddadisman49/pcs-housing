@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'navigation/main_navigation.dart';
+import 'features/auth/auth_gate.dart';
 
 class PCSHousingApp extends StatelessWidget {
   const PCSHousingApp({super.key});
@@ -12,7 +12,7 @@ class PCSHousingApp extends StatelessWidget {
       title: 'PCS Housing',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainNavigation(),
+      home: const AuthGate(),
     );
   }
 }

@@ -1,15 +1,21 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pcs_housing/app.dart';
+import 'package:pcs_housing/features/auth/login_screen.dart';
 
 void main() {
-  testWidgets('PCS Housing app starts', (WidgetTester tester) async {
-    await tester.pumpWidget(const PCSHousingApp());
-    await tester.pumpAndSettle();
+  testWidgets('PCS Housing login screen displays correctly',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: LoginScreen(),
+      ),
+    );
 
-    expect(find.text('Plan your next PCS'), findsOneWidget);
-    expect(find.text('Find Housing'), findsOneWidget);
-    expect(find.text('BAH Calculator'), findsOneWidget);
-    expect(find.text('AI PCS Assistant'), findsOneWidget);
-    expect(find.text('Saved Homes'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Sign In'), findsOneWidget);
+    expect(
+      find.text('New to PCS Housing? Create an account'),
+      findsOneWidget,
+    );
   });
 }
