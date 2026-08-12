@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../bah/bah_calculator_screen.dart';
 import '../../widgets/feature_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -41,9 +41,14 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.calculate_outlined,
               title: 'BAH Calculator',
               subtitle: 'Compare your housing allowance with local costs.',
-              onTap: () {},
-            ),
-
+              onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => const BahCalculatorScreen(),
+    ),
+  );
+},
+),
             const SizedBox(height: 14),
 
             FeatureCard(
