@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../maps/housing_map_screen.dart';
-
+import 'listing_detail_screen.dart';
 import '../../core/services/housing_service.dart';
 
 class HousingSearchScreen extends StatefulWidget {
@@ -194,9 +194,18 @@ if (_listings.isNotEmpty)
             ..._listings.map(
               (listing) => Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: _HousingListingCard(
-                  listing: listing,
-                ),
+               child: _HousingListingCard(
+  listing: listing,
+  onTap: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ListingDetailScreen(
+          listing: listing,
+        ),
+      ),
+    );
+  },
+),
               ),
             ),
           ],
@@ -208,9 +217,11 @@ if (_listings.isNotEmpty)
 
 class _HousingListingCard extends StatelessWidget {
   final Map<String, dynamic> listing;
+  final VoidCallback onTap;
 
   const _HousingListingCard({
     required this.listing,
+    required this.onTap,
   });
 
   @override
@@ -224,11 +235,13 @@ class _HousingListingCard extends StatelessWidget {
     final squareFeet =
         listing['square_feet']?.toString() ?? '-';
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+   return Card(
+  clipBehavior: Clip.antiAlias,
+  child: InkWell(
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           Container(
             height: 150,
             width: double.infinity,
@@ -324,6 +337,7 @@ class _HousingListingCard extends StatelessWidget {
           ),
         ],
       ),
+  )
     );
   }
 }
