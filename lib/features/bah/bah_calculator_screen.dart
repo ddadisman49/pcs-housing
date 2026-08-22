@@ -342,14 +342,21 @@ Widget build(BuildContext context) {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) =>
-                                        HousingSearchScreen(
-                                      bahRate: _bahRate!,
-                                      dutyStation:
-                                          _selectedInstallation?[
-                                                      'name']
-                                                  ?.toString() ??
-                                              '',
-                                    ),
+                                     HousingSearchScreen(
+  bahRate: _bahRate!,
+  dutyStation:
+      _selectedInstallation?['name']?.toString() ?? '',
+  militaryHousingArea:
+      _selectedInstallation?['military_housing_area']
+              ?.toString() ??
+          '',
+  dutyStationLatitude:
+      (_selectedInstallation?['latitude'] as num?)?.toDouble() ??
+          0.0,
+  dutyStationLongitude:
+      (_selectedInstallation?['longitude'] as num?)?.toDouble() ??
+          0.0,
+),
                                   ),
                                 );
                               },

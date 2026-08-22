@@ -2,16 +2,23 @@ import 'package:flutter/material.dart';
 import '../maps/housing_map_screen.dart';
 import 'listing_detail_screen.dart';
 import '../../core/services/housing_service.dart';
+import '../../core/services/distance_service.dart';
 
 class HousingSearchScreen extends StatefulWidget {
   final double bahRate;
   final String dutyStation;
+  final String militaryHousingArea;
+  final double dutyStationLatitude;
+  final double dutyStationLongitude;
 
   const HousingSearchScreen({
-    super.key,
-    required this.bahRate,
-    required this.dutyStation,
-  });
+  super.key,
+  required this.bahRate,
+  required this.dutyStation,
+  required this.militaryHousingArea,
+  required this.dutyStationLatitude,
+  required this.dutyStationLongitude,
+});
 
   @override
   State<HousingSearchScreen> createState() =>
@@ -26,6 +33,8 @@ class _HousingSearchScreenState extends State<HousingSearchScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _listings = [];
 
+    String _sortOption = 'Lowest Rent';
+
   @override
   void initState() {
     super.initState();
@@ -38,12 +47,13 @@ class _HousingSearchScreenState extends State<HousingSearchScreen> {
       _listings = [];
     });
 
+_sortListings();
+
     try {
       final listings = await _housingService.getListings(
-        maxRent: _maxHousingBudget,
-        militaryHousingArea: 'VA298',
-      );
-
+  maxRent: _maxHousingBudget,
+  militaryHousingArea: widget.militaryHousingArea,
+);
       if (!mounted) return;
 
       setState(() {
@@ -67,6 +77,62 @@ class _HousingSearchScreenState extends State<HousingSearchScreen> {
       }
     }
   }
+
+void _sortListings() {
+  setState(() {
+    if (_sortOption == 'Lowest Rent') {
+      _listings.sort((a, b) {
+        final rentA =
+            (a['monthly_rent'] as num?)?.toDouble() ?? 0;
+        final rentB =
+            (b['monthly_rent'] as num?)?.toDouble() ?? 0;
+
+        return rentA.compareTo(rentB);
+      });
+    } else if (_sortOption == 'Highest Rent') {
+      _listings.sort((a, b) {
+        final rentA =
+            (a['monthly_rent'] as num?)?.toDouble() ?? 0;
+        final rentB =
+            (b['monthly_rent'] as num?)?.toDouble() ?? 0;
+
+        return rentB.compareTo(rentA);
+      });
+    } else if (_sortOption == 'Closest to Duty Station') {
+      _listings.sort((a, b) {
+        final latA = (a['latitude'] as num?)?.toDouble();
+        final lonA = (a['longitude'] as num?)?.toDouble();
+
+        final latB = (b['latitude'] as num?)?.toDouble();
+        final lonB = (b['longitude'] as num?)?.toDouble();
+
+        if (latA == null || lonA == null) {
+          return 1;
+        }
+
+        if (latB == null || lonB == null) {
+          return -1;
+        }
+
+        final distanceA = DistanceService.milesBetween(
+          lat1: latA,
+          lon1: lonA,
+          lat2: widget.dutyStationLatitude,
+          lon2: widget.dutyStationLongitude,
+        );
+
+        final distanceB = DistanceService.milesBetween(
+          lat1: latB,
+          lon1: lonB,
+          lat2: widget.dutyStationLatitude,
+          lon2: widget.dutyStationLongitude,
+        );
+
+        return distanceA.compareTo(distanceB);
+      });
+    }
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +236,40 @@ class _HousingSearchScreenState extends State<HousingSearchScreen> {
                     ),
               ),
 
+              if (_listings.isNotEmpty)
+  const SizedBox(height: 12),
+
+if (_listings.isNotEmpty)
+  DropdownButtonFormField<String>(
+    initialValue: _sortOption,
+    decoration: const InputDecoration(
+      labelText: 'Sort Results',
+      prefixIcon: Icon(Icons.sort),
+      border: OutlineInputBorder(),
+    ),
+    items: const [
+      DropdownMenuItem(
+        value: 'Lowest Rent',
+        child: Text('Lowest Rent'),
+      ),
+      DropdownMenuItem(
+        value: 'Highest Rent',
+        child: Text('Highest Rent'),
+      ),
+      DropdownMenuItem(
+        value: 'Closest to Duty Station',
+        child: Text('Closest to Duty Station'),
+      ),
+    ],
+    onChanged: (value) {
+      if (value == null) return;
+
+      _sortOption = value;
+      _sortListings();
+    },
+  ),
+
+
 if (_listings.isNotEmpty)
   Padding(
     padding: const EdgeInsets.only(top: 12, bottom: 16),
@@ -188,14 +288,16 @@ if (_listings.isNotEmpty)
     ),
   ),
 
-            if (_listings.isNotEmpty)
-              const SizedBox(height: 16),
+        if (_listings.isNotEmpty)
+  const SizedBox(height: 12),
 
             ..._listings.map(
               (listing) => Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                child: _HousingListingCard(
   listing: listing,
+  dutyStationLatitude: widget.dutyStationLatitude,
+dutyStationLongitude: widget.dutyStationLongitude,
   onTap: () {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -218,10 +320,14 @@ if (_listings.isNotEmpty)
 class _HousingListingCard extends StatelessWidget {
   final Map<String, dynamic> listing;
   final VoidCallback onTap;
+  final double dutyStationLatitude;
+  final double dutyStationLongitude;
 
   const _HousingListingCard({
     required this.listing,
     required this.onTap,
+    required this.dutyStationLatitude,
+    required this.dutyStationLongitude,
   });
 
   @override
@@ -234,6 +340,25 @@ class _HousingListingCard extends StatelessWidget {
         listing['bathrooms']?.toString() ?? '-';
     final squareFeet =
         listing['square_feet']?.toString() ?? '-';
+        final listingLatitude =
+    (listing['latitude'] as num?)?.toDouble();
+
+final listingLongitude =
+    (listing['longitude'] as num?)?.toDouble();
+
+double? distanceMiles;
+
+if (listingLatitude != null &&
+    listingLongitude != null &&
+    dutyStationLatitude != 0.0 &&
+    dutyStationLongitude != 0.0) {
+  distanceMiles = DistanceService.milesBetween(
+    lat1: listingLatitude,
+    lon1: listingLongitude,
+    lat2: dutyStationLatitude,
+    lon2: dutyStationLongitude,
+  );
+}
 
    return Card(
   clipBehavior: Clip.antiAlias,
@@ -277,6 +402,23 @@ class _HousingListingCard extends StatelessWidget {
                   '${listing['city'] ?? ''}, '
                   '${listing['state'] ?? ''}',
                 ),
+                
+                if (distanceMiles != null) ...[
+  const SizedBox(height: 8),
+  Row(
+    children: [
+      const Icon(
+        Icons.route_outlined,
+        size: 18,
+      ),
+      const SizedBox(width: 6),
+      Text(
+        '${distanceMiles.toStringAsFixed(1)} miles from duty station',
+      ),
+    ],
+  ),
+],
+
                 const SizedBox(height: 14),
                 Text(
                   '\$${monthlyRent.toStringAsFixed(0)}/month',
