@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../../core/services/bah_service.dart';
 import '../../core/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +17,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _rankController = TextEditingController();
   final _currentDutyStationController = TextEditingController();
   final _nextDutyStationController = TextEditingController();
+
+final BahService _bahService = BahService();
+
+List<Map<String, dynamic>> _installations = [];
+
+String? _selectedCurrentDutyStation;
+String? _selectedNextDutyStation;
 
   final List<String> _branches = const [
     'Air Force',
@@ -40,56 +47,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
-  Future<void> _loadProfile() async {
-    try {
-      final profile = await _profileService.getProfile();
+ Future<void> _loadProfile() async {
+  try {
+    final results = await Future.wait([
+      _bahService.getInstallations(),
+      _profileService.getProfile(),
+    ]);
 
-      if (profile != null) {
-        _fullNameController.text =
-            profile['full_name']?.toString() ?? '';
+    final installations =
+        List<Map<String, dynamic>>.from(results[0] as List);
 
-        _rankController.text =
-            profile['rank']?.toString() ?? '';
+    final profile = results[1] as Map<String, dynamic>?;
 
-        _currentDutyStationController.text =
-            profile['current_duty_station']?.toString() ?? '';
+    _installations = installations;
 
-        _nextDutyStationController.text =
-            profile['next_duty_station']?.toString() ?? '';
+    if (profile != null) {
+      _fullNameController.text =
+          profile['full_name']?.toString() ?? '';
 
-        final branch = profile['branch']?.toString();
+      _rankController.text =
+          profile['rank']?.toString() ?? '';
 
-        if (branch != null && _branches.contains(branch)) {
-          _selectedBranch = branch;
-        }
+      final branch = profile['branch']?.toString();
 
-        _hasDependents =
-            profile['has_dependents'] as bool? ?? false;
-
-        final pcsDateValue = profile['pcs_date']?.toString();
-
-        if (pcsDateValue != null && pcsDateValue.isNotEmpty) {
-          _pcsDate = DateTime.tryParse(pcsDateValue);
-        }
+      if (branch != null && _branches.contains(branch)) {
+        _selectedBranch = branch;
       }
-    } catch (error) {
-      _showMessage('Unable to load profile: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+
+      _hasDependents =
+          profile['has_dependents'] as bool? ?? false;
+
+      final savedCurrentDutyStation =
+          profile['current_duty_station']?.toString();
+
+      final savedNextDutyStation =
+          profile['next_duty_station']?.toString();
+
+      final installationNames = installations
+          .map(
+            (installation) =>
+                installation['name']?.toString(),
+          )
+          .whereType<String>()
+          .toSet();
+
+      _selectedCurrentDutyStation =
+          installationNames.contains(savedCurrentDutyStation)
+              ? savedCurrentDutyStation
+              : null;
+
+      _selectedNextDutyStation =
+          installationNames.contains(savedNextDutyStation)
+              ? savedNextDutyStation
+              : null;
+
+      final pcsDateValue =
+          profile['pcs_date']?.toString();
+
+      if (pcsDateValue != null &&
+          pcsDateValue.isNotEmpty) {
+        _pcsDate = DateTime.tryParse(pcsDateValue);
       }
     }
+  } catch (error) {
+    _showMessage('Unable to load profile: $error');
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
+}
 
   Future<void> _saveProfile() async {
     final fullName = _fullNameController.text.trim();
     final rank = _rankController.text.trim();
-    final currentDutyStation =
-        _currentDutyStationController.text.trim();
-    final nextDutyStation =
-        _nextDutyStationController.text.trim();
+   final currentDutyStation =
+    _selectedCurrentDutyStation ?? '';
+
+final nextDutyStation =
+    _selectedNextDutyStation ?? '';
 
     if (fullName.isEmpty) {
       _showMessage('Please enter your full name.');
@@ -105,6 +143,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _showMessage('Please enter your rank.');
       return;
     }
+
+    if (nextDutyStation.isEmpty) {
+  _showMessage('Please select your next duty station.');
+  return;
+}
 
     setState(() {
       _isSaving = true;
@@ -266,28 +309,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
 
-            TextField(
-              controller: _currentDutyStationController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Current Duty Station',
-                prefixIcon: Icon(Icons.location_on_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+  initialValue: _selectedCurrentDutyStation,
+  decoration: const InputDecoration(
+    labelText: 'Current Duty Station',
+    prefixIcon: Icon(Icons.location_on_outlined),
+    border: OutlineInputBorder(),
+  ),
+  items: _installations
+      .map(
+        (installation) => DropdownMenuItem<String>(
+          value: installation['name']?.toString(),
+          child: Text(
+            installation['name']?.toString() ??
+                'Unknown Installation',
+          ),
+        ),
+      )
+      .toList(),
+  onChanged: (value) {
+    setState(() {
+      _selectedCurrentDutyStation = value;
+    });
+  },
+),
 
-            TextField(
-              controller: _nextDutyStationController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Next Duty Station',
-                prefixIcon: Icon(Icons.flag_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
+const SizedBox(height: 16),
 
+            DropdownButtonFormField<String>(
+  initialValue: _selectedNextDutyStation,
+  decoration: const InputDecoration(
+    labelText: 'Next Duty Station',
+    prefixIcon: Icon(Icons.flag_outlined),
+    border: OutlineInputBorder(),
+  ),
+  items: _installations
+      .map(
+        (installation) => DropdownMenuItem<String>(
+          value: installation['name']?.toString(),
+          child: Text(
+            installation['name']?.toString() ??
+                'Unknown Installation',
+          ),
+        ),
+      )
+      .toList(),
+  onChanged: (value) {
+    setState(() {
+      _selectedNextDutyStation = value;
+    });
+  },
+),
             OutlinedButton.icon(
               onPressed: _selectPcsDate,
               icon: const Icon(Icons.calendar_month_outlined),
