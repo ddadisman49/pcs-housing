@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'update_password_screen.dart';
 import '../../core/services/profile_service.dart';
 import '../../navigation/main_navigation.dart';
 import 'login_screen.dart';
@@ -18,6 +18,7 @@ class _AuthGateState extends State<AuthGate> {
   late final StreamSubscription<AuthState> _authSubscription;
 
   Session? _session;
+  bool _isPasswordRecovery = false;
 
   @override
   void initState() {
@@ -32,6 +33,10 @@ class _AuthGateState extends State<AuthGate> {
 
         setState(() {
           _session = data.session;
+
+          if (data.event == AuthChangeEvent.passwordRecovery) {
+            _isPasswordRecovery = true;
+          }
         });
       },
       onError: (Object error) {
@@ -48,6 +53,10 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isPasswordRecovery) {
+      return const UpdatePasswordScreen();
+    }
+
     if (_session == null) {
       return const LoginScreen();
     }
