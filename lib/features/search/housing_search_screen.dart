@@ -3,6 +3,7 @@ import '../maps/housing_map_screen.dart';
 import 'listing_detail_screen.dart';
 import '../../core/services/housing_service.dart';
 import '../../core/services/distance_service.dart';
+import '../../core/services/commute_service.dart';
 
 class HousingSearchScreen extends StatefulWidget {
   final double bahRate;
@@ -317,7 +318,7 @@ dutyStationLongitude: widget.dutyStationLongitude,
   }
 }
 
-class _HousingListingCard extends StatelessWidget {
+class _HousingListingCard extends StatefulWidget {
   final Map<String, dynamic> listing;
   final VoidCallback onTap;
   final double dutyStationLatitude;
@@ -331,155 +332,259 @@ class _HousingListingCard extends StatelessWidget {
   });
 
   @override
+  State<_HousingListingCard> createState() =>
+      _HousingListingCardState();
+}
+
+class _HousingListingCardState
+    extends State<_HousingListingCard> {
+  final CommuteService _commuteService = CommuteService();
+
+  CommuteResult? _commuteResult;
+  bool _isLoadingCommute = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCommute();
+  }
+
+  Future<void> _loadCommute() async {
+    final listingLatitude =
+        (widget.listing['latitude'] as num?)?.toDouble();
+
+    final listingLongitude =
+        (widget.listing['longitude'] as num?)?.toDouble();
+
+    if (listingLatitude == null ||
+        listingLongitude == null ||
+        widget.dutyStationLatitude == 0.0 ||
+        widget.dutyStationLongitude == 0.0) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCommute = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final result = await _commuteService.getCommute(
+        originLatitude: listingLatitude,
+        originLongitude: listingLongitude,
+        destinationLatitude: widget.dutyStationLatitude,
+        destinationLongitude: widget.dutyStationLongitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _commuteResult = result;
+        _isLoadingCommute = false;
+      });
+    } catch (error) {
+      debugPrint('Unable to load commute: $error');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingCommute = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final listing = widget.listing;
+
     final monthlyRent =
         (listing['monthly_rent'] as num?)?.toDouble() ?? 0;
 
-    final bedrooms = listing['bedrooms']?.toString() ?? '-';
+    final bedrooms =
+        listing['bedrooms']?.toString() ?? '-';
+
     final bathrooms =
         listing['bathrooms']?.toString() ?? '-';
+
     final squareFeet =
         listing['square_feet']?.toString() ?? '-';
-        final listingLatitude =
-    (listing['latitude'] as num?)?.toDouble();
 
-final listingLongitude =
-    (listing['longitude'] as num?)?.toDouble();
+    final listingLatitude =
+        (listing['latitude'] as num?)?.toDouble();
 
-double? distanceMiles;
+    final listingLongitude =
+        (listing['longitude'] as num?)?.toDouble();
 
-if (listingLatitude != null &&
-    listingLongitude != null &&
-    dutyStationLatitude != 0.0 &&
-    dutyStationLongitude != 0.0) {
-  distanceMiles = DistanceService.milesBetween(
-    lat1: listingLatitude,
-    lon1: listingLongitude,
-    lat2: dutyStationLatitude,
-    lon2: dutyStationLongitude,
-  );
-}
+    double? distanceMiles;
 
-   return Card(
-  clipBehavior: Clip.antiAlias,
-  child: InkWell(
-    onTap: onTap,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-          Container(
-            height: 150,
-            width: double.infinity,
-            color: Theme.of(context)
-                .colorScheme
-                .primaryContainer,
-            child: Icon(
-              Icons.home_work_outlined,
-              size: 64,
+    if (listingLatitude != null &&
+        listingLongitude != null &&
+        widget.dutyStationLatitude != 0.0 &&
+        widget.dutyStationLongitude != 0.0) {
+      distanceMiles = DistanceService.milesBetween(
+        lat1: listingLatitude,
+        lon1: listingLongitude,
+        lat2: widget.dutyStationLatitude,
+        lon2: widget.dutyStationLongitude,
+      );
+    }
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 150,
+              width: double.infinity,
               color: Theme.of(context)
                   .colorScheme
-                  .primary,
+                  .primaryContainer,
+              child: Icon(
+                Icons.home_work_outlined,
+                size: 64,
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary,
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  listing['title']?.toString() ??
-                      'Housing Listing',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${listing['address'] ?? ''}, '
-                  '${listing['city'] ?? ''}, '
-                  '${listing['state'] ?? ''}',
-                ),
-                
-                if (distanceMiles != null) ...[
-  const SizedBox(height: 8),
-  Row(
-    children: [
-      const Icon(
-        Icons.route_outlined,
-        size: 18,
-      ),
-      const SizedBox(width: 6),
-      Text(
-        '${distanceMiles.toStringAsFixed(1)} miles from duty station',
-      ),
-    ],
-  ),
-],
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    listing['title']?.toString() ??
+                        'Housing Listing',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${listing['address'] ?? ''}, '
+                    '${listing['city'] ?? ''}, '
+                    '${listing['state'] ?? ''}',
+                  ),
 
-                const SizedBox(height: 14),
-                Text(
-                  '\$${monthlyRent.toStringAsFixed(0)}/month',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    _ListingDetail(
-                      icon: Icons.bed_outlined,
-                      text: '$bedrooms beds',
-                    ),
-                    _ListingDetail(
-                      icon: Icons.bathtub_outlined,
-                      text: '$bathrooms baths',
-                    ),
-                    _ListingDetail(
-                      icon: Icons.square_foot,
-                      text: '$squareFeet sq ft',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (listing['military_friendly'] == true)
-                      const Chip(
-                        label: Text('Military Friendly'),
-                        avatar: Icon(
-                          Icons.military_tech_outlined,
+                  if (distanceMiles != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.route_outlined,
                           size: 18,
                         ),
-                      ),
-                    if (listing['pet_friendly'] == true)
-                      const Chip(
-                        label: Text('Pet Friendly'),
-                        avatar: Icon(
-                          Icons.pets_outlined,
+                        const SizedBox(width: 6),
+                        Text(
+                          '${distanceMiles.toStringAsFixed(1)} miles from duty station',
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 8),
+
+                  if (_isLoadingCommute)
+                    const Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Checking drive time...'),
+                      ],
+                    )
+                  else if (_commuteResult != null)
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.directions_car_outlined,
                           size: 18,
                         ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_commuteResult!.durationMinutes} min drive'
+                          ' • ${_commuteResult!.distanceMiles.toStringAsFixed(1)} road miles',
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 14),
+
+                  Text(
+                    '\$${monthlyRent.toStringAsFixed(0)}/month',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary,
+                        ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      _ListingDetail(
+                        icon: Icons.bed_outlined,
+                        text: '$bedrooms beds',
                       ),
-                  ],
-                ),
-              ],
+                      _ListingDetail(
+                        icon: Icons.bathtub_outlined,
+                        text: '$bathrooms baths',
+                      ),
+                      _ListingDetail(
+                        icon: Icons.square_foot,
+                        text: '$squareFeet sq ft',
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (listing['military_friendly'] == true)
+                        const Chip(
+                          label: Text('Military Friendly'),
+                          avatar: Icon(
+                            Icons.military_tech_outlined,
+                            size: 18,
+                          ),
+                        ),
+                      if (listing['pet_friendly'] == true)
+                        const Chip(
+                          label: Text('Pet Friendly'),
+                          avatar: Icon(
+                            Icons.pets_outlined,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-  )
     );
   }
 }
