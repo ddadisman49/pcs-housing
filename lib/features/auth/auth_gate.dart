@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'update_password_screen.dart';
+
 import '../../core/services/profile_service.dart';
 import '../../navigation/main_navigation.dart';
 import 'login_screen.dart';
+import 'update_password_screen.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -29,15 +30,32 @@ class _AuthGateState extends State<AuthGate> {
     _authSubscription =
         Supabase.instance.client.auth.onAuthStateChange.listen(
       (data) {
+        debugPrint('AUTH EVENT: ${data.event}');
+        debugPrint('AUTH SESSION EXISTS: ${data.session != null}');
+
         if (!mounted) return;
 
-        setState(() {
-          _session = data.session;
+       setState(() {
+  _session = data.session;
 
-          if (data.event == AuthChangeEvent.passwordRecovery) {
-            _isPasswordRecovery = true;
-          }
-        });
+  if (data.event == AuthChangeEvent.passwordRecovery) {
+    _isPasswordRecovery = true;
+  }
+
+  if (data.event == AuthChangeEvent.userUpdated) {
+    _isPasswordRecovery = false;
+  }
+});
+
+if (data.event == AuthChangeEvent.passwordRecovery) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+
+    Navigator.of(context).popUntil(
+      (route) => route.isFirst,
+    );
+  });
+}
       },
       onError: (Object error) {
         debugPrint('Authentication stream error: $error');
