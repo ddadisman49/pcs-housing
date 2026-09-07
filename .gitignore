@@ -44,3 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 secrets.properties
+# BAH source and generated data files
+tools/data/
