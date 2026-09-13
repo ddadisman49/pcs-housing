@@ -46,3 +46,4 @@ app.*.map.json
 secrets.properties
 # BAH source and generated data files
 tools/data/
+.env.tools
